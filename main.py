@@ -18,9 +18,14 @@ from summarizer import build_digests
 from notifier import notify
 
 
-def run_job() -> None:
+def run_job(topic_filter: str | None = None) -> None:
     print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Starting daily news job...")
     news = gather_all_news()
+    if topic_filter:
+        news = {k: v for k, v in news.items() if topic_filter.lower() in k.lower()}
+        if not news:
+            print(f"[Job] No topic matched '{topic_filter}'. Available: {list(news.keys())}")
+            return
     total = sum(len(v) for v in news.values())
     print(f"[Scraper] Fetched {total} articles across {len(news)} topics.")
 
@@ -32,10 +37,11 @@ def run_job() -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Daily News Agent")
     parser.add_argument("--now", action="store_true", help="Run immediately (skip scheduler)")
+    parser.add_argument("--topic", type=str, default=None, help="Filter to a single topic (e.g. 'AI' or 'Crypto')")
     args = parser.parse_args()
 
     if args.now:
-        run_job()
+        run_job(topic_filter=args.topic)
         return
 
     tz = pytz.timezone(TIMEZONE)

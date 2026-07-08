@@ -1,4 +1,5 @@
-from openai import OpenAI
+import time
+from openai import OpenAI, RateLimitError, APIError
 from config import GROK_API_KEY
 
 client = OpenAI(
@@ -30,13 +31,25 @@ Keep it punchy and useful. No fluff.
 {article_text}
 """
 
-    response = client.chat.completions.create(
-        model="grok-3-latest",
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=800,
-        temperature=0.4,
-    )
-    return response.choices[0].message.content.strip()
+    for attempt in range(3):
+        try:
+            response = client.chat.completions.create(
+                model="grok-3-latest",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=800,
+                temperature=0.4,
+            )
+            return response.choices[0].message.content.strip()
+        except RateLimitError:
+            wait = 2 ** attempt * 5
+            print(f"[Grok] Rate limited — retrying in {wait}s...")
+            time.sleep(wait)
+        except APIError as e:
+            print(f"[Grok] API error (attempt {attempt + 1}): {e}")
+            if attempt == 2:
+                return f"Could not generate summary for {topic_name}: {e}"
+            time.sleep(3)
+    return f"Summary unavailable for {topic_name} after 3 attempts."
 
 
 def build_digests(news_by_topic: dict[str, list[dict]]) -> dict[str, str]:

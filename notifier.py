@@ -1,11 +1,9 @@
 import re
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+import resend
 from datetime import date
 from twilio.rest import Client
 from config import (
-    GMAIL_ADDRESS, GMAIL_APP_PASSWORD, RECIPIENT_EMAIL,
+    RESEND_API_KEY, RECIPIENT_EMAIL,
     TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM, RECIPIENT_WHATSAPP,
 )
 
@@ -76,24 +74,22 @@ def _build_html_email(digests: dict[str, str]) -> str:
 
 
 def send_email(digests: dict[str, str]) -> None:
-    if not GMAIL_ADDRESS or not GMAIL_APP_PASSWORD:
-        print("[Email] Skipped — Gmail credentials not configured.")
+    if not RESEND_API_KEY:
+        print("[Email] Skipped — RESEND_API_KEY not configured.")
         return
 
+    resend.api_key = RESEND_API_KEY
     today = date.today().strftime("%b %d, %Y")
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = f"Daily Brief: AI & Crypto — {today}"
-    msg["From"] = GMAIL_ADDRESS
-    msg["To"] = RECIPIENT_EMAIL
-
     plain_text = "\n\n---\n\n".join(f"{k}\n{v}" for k, v in digests.items())
-    msg.attach(MIMEText(plain_text, "plain"))
-    msg.attach(MIMEText(_build_html_email(digests), "html"))
 
     try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login(GMAIL_ADDRESS, GMAIL_APP_PASSWORD)
-            server.sendmail(GMAIL_ADDRESS, RECIPIENT_EMAIL, msg.as_string())
+        resend.Emails.send({
+            "from": "Daily Brief <onboarding@resend.dev>",
+            "to": [RECIPIENT_EMAIL],
+            "subject": f"Daily Brief: AI & Crypto — {today}",
+            "html": _build_html_email(digests),
+            "text": plain_text,
+        })
         print(f"[Email] Sent to {RECIPIENT_EMAIL}")
     except Exception as e:
         print(f"[Email] Error: {e}")

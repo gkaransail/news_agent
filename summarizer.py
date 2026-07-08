@@ -1,10 +1,10 @@
 import time
 from openai import OpenAI, RateLimitError, APIError
-from config import GROK_API_KEY
+from config import GROQ_API_KEY
 
 client = OpenAI(
-    api_key=GROK_API_KEY,
-    base_url="https://api.x.ai/v1",
+    api_key=GROQ_API_KEY,
+    base_url="https://api.groq.com/openai/v1",
 )
 
 
@@ -34,7 +34,7 @@ Keep it punchy and useful. No fluff.
     for attempt in range(3):
         try:
             response = client.chat.completions.create(
-                model="grok-3-latest",
+                model="llama-3.3-70b-versatile",
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=800,
                 temperature=0.4,

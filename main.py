@@ -18,7 +18,7 @@ from summarizer import build_digests
 from notifier import notify
 
 
-def run_job(topic_filter: str | None = None) -> None:
+def run_job(topic_filter: str | None = None, print_digest: bool = False) -> None:
     print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Starting daily news job...")
     news = gather_all_news()
     if topic_filter:
@@ -30,6 +30,14 @@ def run_job(topic_filter: str | None = None) -> None:
     print(f"[Scraper] Fetched {total} articles across {len(news)} topics.")
 
     digests = build_digests(news)
+
+    if print_digest:
+        print("\n" + "=" * 60)
+        for topic, content in digests.items():
+            print(f"\n### {topic} ###\n")
+            print(content)
+            print("\n" + "-" * 60)
+
     notify(digests)
     print(f"[{datetime.now().strftime('%H:%M:%S')}] Job complete.\n")
 
@@ -38,10 +46,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Daily News Agent")
     parser.add_argument("--now", action="store_true", help="Run immediately (skip scheduler)")
     parser.add_argument("--topic", type=str, default=None, help="Filter to a single topic (e.g. 'AI' or 'Crypto')")
+    parser.add_argument("--print", action="store_true", dest="print_digest", help="Print digest to terminal")
     args = parser.parse_args()
 
     if args.now:
-        run_job(topic_filter=args.topic)
+        run_job(topic_filter=args.topic, print_digest=args.print_digest)
         return
 
     tz = pytz.timezone(TIMEZONE)

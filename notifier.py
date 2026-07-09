@@ -83,10 +83,11 @@ def send_email(digests: dict[str, str]) -> None:
     plain_text = "\n\n---\n\n".join(f"{k}\n{v}" for k, v in digests.items())
 
     try:
+        topic_count = len(digests)
         resend.Emails.send({
             "from": "Daily Brief <onboarding@resend.dev>",
             "to": [RECIPIENT_EMAIL],
-            "subject": f"Daily Brief: AI & Crypto — {today}",
+            "subject": f"Daily Brief: AI & Crypto — {today} ({topic_count} topics)",
             "html": _build_html_email(digests),
             "text": plain_text,
         })

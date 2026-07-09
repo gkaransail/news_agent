@@ -34,9 +34,9 @@ def run_job(topic_filter: str | None = None, print_digest: bool = False) -> None
     if print_digest:
         print("\n" + "=" * 60)
         for topic, content in digests.items():
-            print(f"\n### {topic} ###\n")
+            print(f"\n{'='*60}\n  {topic.upper()}\n{'='*60}\n")
             print(content)
-            print("\n" + "-" * 60)
+        print("\n" + "=" * 60)
 
     notify(digests)
     print(f"[{datetime.now().strftime('%H:%M:%S')}] Job complete.\n")

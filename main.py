@@ -18,14 +18,17 @@ from summarizer import build_digests
 from notifier import notify
 
 
-def run_job(topic_filter: str | None = None, print_digest: bool = False) -> None:
-    print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Starting daily news job...")
+def run_job(topic_filter: str | None = None, print_digest: bool = False, dry_run: bool = False) -> None:
+    start = datetime.now()
+    print(f"\n[{start.strftime('%Y-%m-%d %H:%M:%S')}] Starting daily news job{' (dry run)' if dry_run else ''}...")
+
     news = gather_all_news()
     if topic_filter:
         news = {k: v for k, v in news.items() if topic_filter.lower() in k.lower()}
         if not news:
-            print(f"[Job] No topic matched '{topic_filter}'. Available: {list(news.keys())}")
+            print(f"[Job] No topic matched '{topic_filter}'.")
             return
+
     total = sum(len(v) for v in news.values())
     print(f"[Scraper] Fetched {total} articles across {len(news)} topics.")
 
@@ -38,7 +41,15 @@ def run_job(topic_filter: str | None = None, print_digest: bool = False) -> None
             print(content)
         print("\n" + "=" * 60)
 
-    notify(digests)
+    if not dry_run:
+        notify(digests)
+
+    elapsed = (datetime.now() - start).seconds
+    print(f"\n--- Run Summary ---")
+    for topic, articles in news.items():
+        print(f"  {topic}: {len(articles)} articles")
+    print(f"  Notifications: {'skipped (dry run)' if dry_run else 'sent'}")
+    print(f"  Total time: {elapsed}s")
     print(f"[{datetime.now().strftime('%H:%M:%S')}] Job complete.\n")
 
 
@@ -47,10 +58,11 @@ def main() -> None:
     parser.add_argument("--now", action="store_true", help="Run immediately (skip scheduler)")
     parser.add_argument("--topic", type=str, default=None, help="Filter to a single topic (e.g. 'AI' or 'Crypto')")
     parser.add_argument("--print", action="store_true", dest="print_digest", help="Print digest to terminal")
+    parser.add_argument("--dry-run", action="store_true", dest="dry_run", help="Fetch and summarize but skip sending notifications")
     args = parser.parse_args()
 
     if args.now:
-        run_job(topic_filter=args.topic, print_digest=args.print_digest)
+        run_job(topic_filter=args.topic, print_digest=args.print_digest, dry_run=args.dry_run)
         return
 
     tz = pytz.timezone(TIMEZONE)

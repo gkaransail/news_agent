@@ -1,3 +1,4 @@
+import time
 import feedparser
 import requests
 from datetime import datetime, timedelta, timezone
@@ -17,13 +18,18 @@ def fetch_newsapi_articles(query: str, max_articles: int = 10) -> list[dict]:
         "pageSize": max_articles,
         "apiKey": NEWS_API_KEY,
     }
-    try:
-        resp = requests.get(url, params=params, timeout=10)
-        resp.raise_for_status()
-        return resp.json().get("articles", [])
-    except Exception as e:
-        print(f"[NewsAPI] Error for '{query}': {e}")
-        return []
+    for attempt in range(3):
+        try:
+            resp = requests.get(url, params=params, timeout=10)
+            resp.raise_for_status()
+            return resp.json().get("articles", [])
+        except requests.exceptions.Timeout:
+            print(f"[NewsAPI] Timeout for '{query}' (attempt {attempt + 1})")
+            time.sleep(2 ** attempt)
+        except Exception as e:
+            print(f"[NewsAPI] Error for '{query}': {e}")
+            return []
+    return []
 
 
 def fetch_rss_articles(feed_url: str, max_articles: int = 5) -> list[dict]:

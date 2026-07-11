@@ -5,14 +5,14 @@ from datetime import datetime, timedelta, timezone
 from config import NEWS_API_KEY, TOPICS, RSS_FEEDS
 
 
-def fetch_newsapi_articles(query: str, max_articles: int = 10) -> list[dict]:
+def fetch_newsapi_articles(query: str, max_articles: int = 10, lookback_days: int = 1) -> list[dict]:
     if not NEWS_API_KEY:
         return []
-    yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
+    since = (datetime.now(timezone.utc) - timedelta(days=lookback_days)).strftime("%Y-%m-%d")
     url = "https://newsapi.org/v2/everything"
     params = {
         "q": query,
-        "from": yesterday,
+        "from": since,
         "sortBy": "publishedAt",
         "language": "en",
         "pageSize": max_articles,
@@ -32,8 +32,8 @@ def fetch_newsapi_articles(query: str, max_articles: int = 10) -> list[dict]:
     return []
 
 
-def fetch_rss_articles(feed_url: str, max_articles: int = 5) -> list[dict]:
-    cutoff = datetime.now(timezone.utc) - timedelta(days=1)
+def fetch_rss_articles(feed_url: str, max_articles: int = 5, lookback_days: int = 1) -> list[dict]:
+    cutoff = datetime.now(timezone.utc) - timedelta(days=lookback_days)
     try:
         feed = feedparser.parse(feed_url)
         articles = []
@@ -56,7 +56,7 @@ def fetch_rss_articles(feed_url: str, max_articles: int = 5) -> list[dict]:
         return []
 
 
-def gather_all_news() -> dict[str, list[dict]]:
+def gather_all_news(lookback_days: int = 1) -> dict[str, list[dict]]:
     results: dict[str, list[dict]] = {}
     seen_urls: set[str] = set()
 
@@ -65,14 +65,14 @@ def gather_all_news() -> dict[str, list[dict]]:
         articles = []
 
         for query in topic["queries"]:
-            for article in fetch_newsapi_articles(query, max_articles=5):
+            for article in fetch_newsapi_articles(query, max_articles=5, lookback_days=lookback_days):
                 url = article.get("url", "")
                 if url and url not in seen_urls:
                     seen_urls.add(url)
                     articles.append(article)
 
         for feed_url in RSS_FEEDS.get(topic_name, []):
-            for article in fetch_rss_articles(feed_url, max_articles=5):
+            for article in fetch_rss_articles(feed_url, max_articles=5, lookback_days=lookback_days):
                 url = article.get("url", "")
                 if url and url not in seen_urls:
                     seen_urls.add(url)

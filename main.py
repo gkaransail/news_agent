@@ -12,17 +12,29 @@ import pytz
 import schedule
 from datetime import datetime
 
-from config import SEND_TIME, TIMEZONE
+from config import SEND_TIME, TIMEZONE, GROQ_API_KEY, NEWS_API_KEY, RESEND_API_KEY
 from scraper import gather_all_news
 from summarizer import build_digests
 from notifier import notify
 
 
-def run_job(topic_filter: str | None = None, print_digest: bool = False, dry_run: bool = False) -> None:
+def validate_config() -> None:
+    warnings = []
+    if not GROQ_API_KEY:
+        warnings.append("GROQ_API_KEY not set — summarization will fail")
+    if not NEWS_API_KEY:
+        warnings.append("NEWS_API_KEY not set — falling back to RSS only")
+    if not RESEND_API_KEY:
+        warnings.append("RESEND_API_KEY not set — email will be skipped")
+    for w in warnings:
+        print(f"[Config] WARNING: {w}")
+
+
+def run_job(topic_filter: str | None = None, print_digest: bool = False, dry_run: bool = False, lookback_days: int = 1) -> None:
     start = datetime.now()
     print(f"\n[{start.strftime('%Y-%m-%d %H:%M:%S')}] Starting daily news job{' (dry run)' if dry_run else ''}...")
 
-    news = gather_all_news()
+    news = gather_all_news(lookback_days=lookback_days)
     if topic_filter:
         news = {k: v for k, v in news.items() if topic_filter.lower() in k.lower()}
         if not news:
@@ -30,7 +42,7 @@ def run_job(topic_filter: str | None = None, print_digest: bool = False, dry_run
             return
 
     total = sum(len(v) for v in news.values())
-    print(f"[Scraper] Fetched {total} articles across {len(news)} topics.")
+    print(f"[Scraper] Fetched {total} articles across {len(news)} topics (last {lookback_days}d).")
 
     digests = build_digests(news)
 
@@ -47,7 +59,8 @@ def run_job(topic_filter: str | None = None, print_digest: bool = False, dry_run
     elapsed = (datetime.now() - start).seconds
     print(f"\n--- Run Summary ---")
     for topic, articles in news.items():
-        print(f"  {topic}: {len(articles)} articles")
+        sources = {a.get("source", {}).get("name", "unknown") for a in articles}
+        print(f"  {topic}: {len(articles)} articles from {len(sources)} sources")
     print(f"  Notifications: {'skipped (dry run)' if dry_run else 'sent'}")
     print(f"  Total time: {elapsed}s")
     print(f"[{datetime.now().strftime('%H:%M:%S')}] Job complete.\n")
@@ -59,10 +72,13 @@ def main() -> None:
     parser.add_argument("--topic", type=str, default=None, help="Filter to a single topic (e.g. 'AI' or 'Crypto')")
     parser.add_argument("--print", action="store_true", dest="print_digest", help="Print digest to terminal")
     parser.add_argument("--dry-run", action="store_true", dest="dry_run", help="Fetch and summarize but skip sending notifications")
+    parser.add_argument("--days", type=int, default=1, help="Number of days to look back for articles (default: 1)")
     args = parser.parse_args()
 
+    validate_config()
+
     if args.now:
-        run_job(topic_filter=args.topic, print_digest=args.print_digest, dry_run=args.dry_run)
+        run_job(topic_filter=args.topic, print_digest=args.print_digest, dry_run=args.dry_run, lookback_days=args.days)
         return
 
     tz = pytz.timezone(TIMEZONE)

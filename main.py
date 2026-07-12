@@ -64,6 +64,18 @@ def run_job(topic_filter: str | None = None, print_digest: bool = False, dry_run
     print(f"  Notifications: {'skipped (dry run)' if dry_run else 'sent'}")
     print(f"  Total time: {elapsed}s")
     print(f"[{datetime.now().strftime('%H:%M:%S')}] Job complete.\n")
+    return digests
+
+
+def _save_output(digests: dict, path: str) -> None:
+    from notifier import _build_html_email
+    if path.endswith(".html"):
+        content = _build_html_email(digests)
+    else:
+        content = "\n\n---\n\n".join(f"{k}\n{v}" for k, v in digests.items())
+    with open(path, "w") as f:
+        f.write(content)
+    print(f"[Output] Digest saved to {path}")
 
 
 def main() -> None:
@@ -73,12 +85,15 @@ def main() -> None:
     parser.add_argument("--print", action="store_true", dest="print_digest", help="Print digest to terminal")
     parser.add_argument("--dry-run", action="store_true", dest="dry_run", help="Fetch and summarize but skip sending notifications")
     parser.add_argument("--days", type=int, default=1, help="Number of days to look back for articles (default: 1)")
+    parser.add_argument("--output", type=str, default=None, help="Save digest to a file (e.g. digest.html or digest.txt)")
     args = parser.parse_args()
 
     validate_config()
 
     if args.now:
-        run_job(topic_filter=args.topic, print_digest=args.print_digest, dry_run=args.dry_run, lookback_days=args.days)
+        digests = run_job(topic_filter=args.topic, print_digest=args.print_digest, dry_run=args.dry_run, lookback_days=args.days)
+        if args.output and digests:
+            _save_output(digests, args.output)
         return
 
     tz = pytz.timezone(TIMEZONE)

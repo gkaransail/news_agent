@@ -55,6 +55,10 @@ Keep it punchy and useful. No fluff.
 def build_digests(news_by_topic: dict[str, list[dict]]) -> dict[str, str]:
     digests = {}
     for topic_name, articles in news_by_topic.items():
-        print(f"[Grok] Summarizing {len(articles)} articles for '{topic_name}'...")
-        digests[topic_name] = summarize_topic(topic_name, articles)
+        print(f"[Groq] Summarizing {len(articles)} articles for '{topic_name}'...")
+        try:
+            digests[topic_name] = summarize_topic(topic_name, articles)
+        except Exception as e:
+            print(f"[Groq] Failed to summarize '{topic_name}': {e}")
+            digests[topic_name] = f"Summary unavailable for {topic_name} due to an error."
     return digests

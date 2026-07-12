@@ -56,9 +56,17 @@ def fetch_rss_articles(feed_url: str, max_articles: int = 5, lookback_days: int 
         return []
 
 
+def _title_key(title: str) -> str:
+    """Normalise a title to a short fingerprint for deduplication."""
+    stop = {"a", "an", "the", "in", "on", "at", "to", "of", "and", "is", "for", "with"}
+    words = [w.lower() for w in title.split() if w.lower() not in stop]
+    return " ".join(words[:6])
+
+
 def gather_all_news(lookback_days: int = 1) -> dict[str, list[dict]]:
     results: dict[str, list[dict]] = {}
     seen_urls: set[str] = set()
+    seen_titles: set[str] = set()
 
     for topic in TOPICS:
         topic_name = topic["name"]
@@ -67,15 +75,19 @@ def gather_all_news(lookback_days: int = 1) -> dict[str, list[dict]]:
         for query in topic["queries"]:
             for article in fetch_newsapi_articles(query, max_articles=5, lookback_days=lookback_days):
                 url = article.get("url", "")
-                if url and url not in seen_urls:
+                title_key = _title_key(article.get("title", ""))
+                if url and url not in seen_urls and title_key not in seen_titles:
                     seen_urls.add(url)
+                    seen_titles.add(title_key)
                     articles.append(article)
 
         for feed_url in RSS_FEEDS.get(topic_name, []):
             for article in fetch_rss_articles(feed_url, max_articles=5, lookback_days=lookback_days):
                 url = article.get("url", "")
-                if url and url not in seen_urls:
+                title_key = _title_key(article.get("title", ""))
+                if url and url not in seen_urls and title_key not in seen_titles:
                     seen_urls.add(url)
+                    seen_titles.add(title_key)
                     articles.append(article)
 
         results[topic_name] = articles[:20]

@@ -58,16 +58,31 @@ def _build_html_email(digests: dict[str, str]) -> str:
         </div>"""
 
     return f"""
-    <html><body style="font-family:Arial,sans-serif;max-width:680px;margin:auto;padding:20px;background:#f4f4f8;">
-      <div style="background:#1a1a2e;padding:24px 28px;border-radius:8px 8px 0 0;">
+    <html>
+    <head>
+      <style>
+        body {{ font-family:Arial,sans-serif;max-width:680px;margin:auto;padding:20px;background:#f4f4f8; }}
+        .card {{ background:#fff;padding:28px;border-radius:0 0 8px 8px;border:1px solid #ddd;border-top:none; }}
+        .header {{ background:#1a1a2e;padding:24px 28px;border-radius:8px 8px 0 0; }}
+        a {{ color:#e94560; }}
+        @media (prefers-color-scheme: dark) {{
+          body {{ background:#0d0d1a !important; }}
+          .card {{ background:#1a1a2e !important;border-color:#333 !important;color:#ddd !important; }}
+          p, li {{ color:#ccc !important; }}
+          strong {{ color:#fff !important; }}
+        }}
+      </style>
+    </head>
+    <body>
+      <div class="header">
         <h1 style="color:#e94560;margin:0;font-size:22px;letter-spacing:0.5px;">Daily Intelligence Brief</h1>
         <p style="color:#aaa;margin:6px 0 0;font-size:13px;">{today}</p>
       </div>
-      <div style="background:#fff;padding:28px;border-radius:0 0 8px 8px;border:1px solid #ddd;border-top:none;">
+      <div class="card">
         {topic_blocks}
         <hr style="border:none;border-top:1px solid #eee;margin-top:24px;">
         <p style="color:#bbb;font-size:11px;text-align:center;margin-top:12px;">
-          Powered by Grok AI &nbsp;·&nbsp; Delivered daily at 10 AM
+          Powered by Groq AI &nbsp;·&nbsp; Delivered daily at 10 AM
         </p>
       </div>
     </body></html>"""

@@ -1,13 +1,47 @@
+import json
 import time
+import hashlib
 import feedparser
 import requests
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from config import NEWS_API_KEY, TOPICS, RSS_FEEDS
+
+_CACHE_FILE = Path(__file__).parent / ".article_cache.json"
+_CACHE_TTL_HOURS = 6
+
+
+def _load_cache() -> dict:
+    if _CACHE_FILE.exists():
+        try:
+            data = json.loads(_CACHE_FILE.read_text())
+            cutoff = datetime.now(timezone.utc).timestamp() - _CACHE_TTL_HOURS * 3600
+            return {k: v for k, v in data.items() if v.get("ts", 0) > cutoff}
+        except Exception:
+            return {}
+    return {}
+
+
+def _save_cache(cache: dict) -> None:
+    try:
+        _CACHE_FILE.write_text(json.dumps(cache))
+    except Exception:
+        pass
+
+
+def _cache_key(query: str, lookback_days: int) -> str:
+    return hashlib.md5(f"{query}:{lookback_days}".encode()).hexdigest()
 
 
 def fetch_newsapi_articles(query: str, max_articles: int = 10, lookback_days: int = 1) -> list[dict]:
     if not NEWS_API_KEY:
         return []
+
+    cache = _load_cache()
+    key = _cache_key(query, lookback_days)
+    if key in cache:
+        return cache[key]["articles"]
+
     since = (datetime.now(timezone.utc) - timedelta(days=lookback_days)).strftime("%Y-%m-%d")
     url = "https://newsapi.org/v2/everything"
     params = {
@@ -22,7 +56,10 @@ def fetch_newsapi_articles(query: str, max_articles: int = 10, lookback_days: in
         try:
             resp = requests.get(url, params=params, timeout=10)
             resp.raise_for_status()
-            return resp.json().get("articles", [])
+            articles = resp.json().get("articles", [])
+            cache[key] = {"articles": articles, "ts": datetime.now(timezone.utc).timestamp()}
+            _save_cache(cache)
+            return articles
         except requests.exceptions.Timeout:
             print(f"[NewsAPI] Timeout for '{query}' (attempt {attempt + 1})")
             time.sleep(2 ** attempt)

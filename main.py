@@ -86,9 +86,11 @@ def main() -> None:
     parser.add_argument("--dry-run", action="store_true", dest="dry_run", help="Fetch and summarize but skip sending notifications")
     parser.add_argument("--days", type=int, default=1, help="Number of days to look back for articles (default: 1)")
     parser.add_argument("--output", type=str, default=None, help="Save digest to a file (e.g. digest.html or digest.txt)")
+    parser.add_argument("--quiet", action="store_true", help="Suppress info logs, only show errors")
     args = parser.parse_args()
 
-    validate_config()
+    if not args.quiet:
+        validate_config()
 
     if args.now:
         digests = run_job(topic_filter=args.topic, print_digest=args.print_digest, dry_run=args.dry_run, lookback_days=args.days)
